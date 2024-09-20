@@ -47,15 +47,17 @@ defmodule OpentelemetryBandit do
 
     url = extract_url(meta, conn)
     request_path = extract_request_path(meta, conn)
+    method = conn.method
+    status = conn.status
 
     attributes =
       if Map.has_key?(meta, :error) do
         %{
           Trace.http_url() => url,
-          Trace.http_method() => meta.method,
+          Trace.http_method() => method,
           Trace.net_transport() => :"IP.TCP",
           Trace.http_response_content_length() => measurements.resp_body_bytes,
-          Trace.http_status_code() => meta.status
+          Trace.http_status_code() => status
         }
       else
         %{
@@ -65,8 +67,8 @@ defmodule OpentelemetryBandit do
           Trace.net_peer_name() => conn.host,
           Trace.net_peer_port() => conn.port,
           Trace.http_target() => conn.request_path,
-          Trace.http_method() => meta.method,
-          Trace.http_status_code() => meta.status,
+          Trace.http_method() => method,
+          Trace.http_status_code() => status,
           Trace.http_response_content_length() => measurements.resp_body_bytes,
           Trace.net_transport() => :"IP.TCP",
           Trace.http_user_agent() => user_agent(conn)
@@ -75,7 +77,7 @@ defmodule OpentelemetryBandit do
 
     span_kind = if Map.has_key?(meta, :error), do: :error, else: :server
 
-    span_id = "HTTP #{meta.method} #{request_path}" |> String.trim()
+    span_id = "HTTP #{method} #{request_path}" |> String.trim()
 
     OpenTelemetry.Tracer.start_span(span_id, %{
       attributes: attributes,
